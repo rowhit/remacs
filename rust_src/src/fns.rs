@@ -30,10 +30,10 @@ use vectors::length;
 pub fn featurep(feature: LispSymbolRef, subfeature: LispObject) -> bool {
     let mut tem = memq(
         feature.as_lisp_obj(),
-        LispObject::from_raw(unsafe { globals.f_Vfeatures }),
+        unsafe { globals.f_Vfeatures },
     );
     if tem.is_not_nil() && subfeature.is_not_nil() {
-        tem = member(subfeature, get(feature, LispObject::from_raw(Qsubfeatures)));
+        tem = member(subfeature, get(feature, Qsubfeatures));
     }
     tem.is_not_nil()
 }
@@ -47,7 +47,7 @@ pub fn provide(feature: LispSymbolRef, subfeature: LispObject) -> LispObject {
         wrong_type!(Qlistp, subfeature)
     }
     unsafe {
-        if LispObject::from_raw(Vautoload_queue).is_not_nil() {
+        if Vautoload_queue.is_not_nil() {
             Vautoload_queue = Fcons(
                 Fcons(LispObject::from_fixnum(0).to_raw(), globals.f_Vfeatures),
                 Vautoload_queue,
@@ -56,7 +56,7 @@ pub fn provide(feature: LispSymbolRef, subfeature: LispObject) -> LispObject {
     }
     if memq(
         feature.as_lisp_obj(),
-        LispObject::from_raw(unsafe { globals.f_Vfeatures }),
+        unsafe { globals.f_Vfeatures },
     ).is_nil()
     {
         unsafe {
@@ -66,7 +66,7 @@ pub fn provide(feature: LispSymbolRef, subfeature: LispObject) -> LispObject {
     if subfeature.is_not_nil() {
         put(
             feature.as_lisp_obj(),
-            LispObject::from_raw(Qsubfeatures),
+            Qsubfeatures,
             subfeature,
         );
     }
@@ -80,7 +80,7 @@ pub fn provide(feature: LispSymbolRef, subfeature: LispObject) -> LispObject {
     unsafe {
         if let Some(c) = assq(
             feature.as_lisp_obj(),
-            LispObject::from_raw(globals.f_Vafter_load_alist),
+            globals.f_Vafter_load_alist,
         ).as_cons()
         {
             Fmapc(Qfuncall, c.cdr().to_raw());
@@ -104,7 +104,7 @@ pub fn quote(args: LispCons) -> LispObject {
     if args.cdr().is_not_nil() {
         xsignal!(
             Qwrong_number_of_arguments,
-            LispObject::from_raw(Qquote),
+            Qquote,
             length(args.as_obj())
         );
     }
@@ -142,7 +142,7 @@ unsafe extern "C" fn require_unwind(old_value: LispObject) {
 #[lisp_fn(min = "1")]
 pub fn require(feature: LispObject, filename: LispObject, noerror: LispObject) -> LispObject {
     let feature_sym = feature.as_symbol_or_error();
-    let current_load_list = LispObject::from_raw(unsafe { globals.f_Vcurrent_load_list });
+    let current_load_list = unsafe { globals.f_Vcurrent_load_list };
 
     // Record the presence of `require' in this file
     // even if the feature specified is already loaded.
@@ -155,7 +155,7 @@ pub fn require(feature: LispObject, filename: LispObject, noerror: LispObject) -
             .map_or(false, |elt| elt.is_string());
 
     if from_file {
-        let tem = LispObject::cons(LispObject::from_raw(Qrequire), feature);
+        let tem = LispObject::cons(Qrequire, feature);
         if member(tem, current_load_list).is_nil() {
             loadhist_attach(tem.to_raw());
         }
@@ -163,7 +163,7 @@ pub fn require(feature: LispObject, filename: LispObject, noerror: LispObject) -
 
     if memq(
         feature,
-        LispObject::from_raw(unsafe { globals.f_Vfeatures }),
+        unsafe { globals.f_Vfeatures },
     ).is_not_nil()
     {
         return feature;
@@ -183,7 +183,7 @@ pub fn require(feature: LispObject, filename: LispObject, noerror: LispObject) -
     // A certain amount of recursive `require' is legitimate,
     // but if we require the same feature recursively 3 times,
     // signal an error.
-    let nesting = LispObject::from_raw(unsafe { require_nesting_list })
+    let nesting = unsafe { require_nesting_list }
         .iter_cars()
         .filter(|elt| equal(feature, *elt))
         .count();
@@ -219,18 +219,18 @@ pub fn require(feature: LispObject, filename: LispObject, noerror: LispObject) -
 
         // If load failed entirely, return nil.
         if tem == Qnil {
-            return LispObject::from_raw(unbind_to(count, Qnil));
+            return unbind_to(count, Qnil);
         }
     }
 
     let tem = memq(
         feature,
-        LispObject::from_raw(unsafe { globals.f_Vfeatures }),
+        unsafe { globals.f_Vfeatures },
     );
     if tem.is_nil() {
-        let tem3 = car(car(LispObject::from_raw(unsafe {
+        let tem3 = car(car(unsafe {
             globals.f_Vload_history
-        })));
+        }));
 
         if tem3.is_nil() {
             error!(
@@ -252,7 +252,7 @@ pub fn require(feature: LispObject, filename: LispObject, noerror: LispObject) -
         Vautoload_queue = Qt;
     }
 
-    LispObject::from_raw(unsafe { unbind_to(count, feature.to_raw()) })
+    unsafe { unbind_to(count, feature.to_raw()) }
 }
 def_lisp_sym!(Qrequire, "require");
 
@@ -263,14 +263,14 @@ def_lisp_sym!(Qrequire, "require");
 /// usage: (append &rest SEQUENCES)
 #[lisp_fn]
 pub fn append(args: &mut [LispObject]) -> LispObject {
-    LispObject::from_raw(unsafe {
+    unsafe {
         lisp_concat(
             args.len() as isize,
             args.as_mut_ptr() as *mut LispObject,
             Lisp_Type::Lisp_Cons,
             true,
         )
-    })
+    }
 }
 
 /// Concatenate all the arguments and make the result a string.
@@ -279,14 +279,14 @@ pub fn append(args: &mut [LispObject]) -> LispObject {
 /// usage: (concat &rest SEQUENCES)
 #[lisp_fn]
 pub fn concat(args: &mut [LispObject]) -> LispObject {
-    LispObject::from_raw(unsafe {
+    unsafe {
         lisp_concat(
             args.len() as isize,
             args.as_mut_ptr() as *mut LispObject,
             Lisp_Type::Lisp_String,
             false,
         )
-    })
+    }
 }
 
 include!(concat!(env!("OUT_DIR"), "/fns_exports.rs"));
